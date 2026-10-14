@@ -1,0 +1,16 @@
+supported_graphs:
+  - erdos_renyi
+  - gset
+
+supported_algorithms:
+  - exact
+  - local_search
+  - simulated_annealing
+  - spiking_neural_network
+  - hopfield
+
+supported_hardware:
+  - cpu
+  - gpu
+  - neuromorphic
+  - quantum

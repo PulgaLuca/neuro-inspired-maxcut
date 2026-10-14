@@ -1,0 +1,14 @@
+numpy
+networkx
+scipy
+pydantic
+PyYAML
+typer
+
+[analysis]
+pandas
+matplotlib
+
+[dev]
+pytest
+ruff

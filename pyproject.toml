@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuro-inspired-maxcut"
+version = "0.1.0"
+description = "Modular optimization algorithm benchmarking"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "numpy",
+    "networkx",
+    "scipy",
+    "pydantic",
+    "PyYAML",
+    "typer",
+]
+
+[project.optional-dependencies]
+analysis = [
+    "pandas",
+    "matplotlib",
+]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[project.scripts]
+neuro-inspired-maxcut = "neuro_inspired_maxcut.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88

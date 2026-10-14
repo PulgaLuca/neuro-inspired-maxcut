@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: neuro-inspired-maxcut
+Version: 0.1.0
+Summary: Modular optimization algorithm benchmarking
+Requires-Python: <3.15,>=3.11
+Requires-Dist: numpy
+Requires-Dist: networkx
+Requires-Dist: scipy
+Requires-Dist: pydantic
+Requires-Dist: PyYAML
+Requires-Dist: typer
+Provides-Extra: analysis
+Requires-Dist: pandas; extra == "analysis"
+Requires-Dist: matplotlib; extra == "analysis"
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
