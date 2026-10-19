@@ -27,6 +27,10 @@ neuro-inspired-maxcut run --config configs/benchmark_cpu.yaml
 
 In alternativa: `python -m cli run --config configs/benchmark_cpu.yaml`.
 
+Per creare rapidamente configurazioni personalizzate, consulta la
+[guida alle configurazioni](./configs/configs-helper.md), con esempi per grafi,
+algoritmi, backend e indicazioni su cosa è già eseguibile.
+
 ## Benchmark GSET
 
 Le istanze GSET sono lette dalla cartella `istances/` in formato
