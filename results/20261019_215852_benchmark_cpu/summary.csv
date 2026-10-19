@@ -1,7 +1,0 @@
-algorithm,hardware,objective_value,runtime_seconds,status,seed,graph_id,n_nodes,n_edges,density,repetition,run_id,backend,graph_seed
-simulated_annealing,cpu,601.0,0.05888450000202283,completed,1109,er_sparse_n100,100,930,0.2,1,run_000001,cpu,5042
-simulated_annealing,cpu,606.0,0.06469440000364557,completed,2119,er_sparse_n100,100,930,0.2,2,run_000002,cpu,5042
-simulated_annealing,cpu,2417.0,0.0657212000223808,completed,3127,er_sparse_n200,200,4042,0.2,1,run_000003,cpu,5142
-simulated_annealing,cpu,2435.0,0.07397460000356659,completed,4137,er_sparse_n200,200,4042,0.2,2,run_000004,cpu,5142
-simulated_annealing,cpu,13980.0,0.09175929997581989,completed,5145,er_sparse_n500,500,24780,0.2,1,run_000005,cpu,5442
-simulated_annealing,cpu,13864.0,0.08698239998193458,completed,6155,er_sparse_n500,500,24780,0.2,2,run_000006,cpu,5442

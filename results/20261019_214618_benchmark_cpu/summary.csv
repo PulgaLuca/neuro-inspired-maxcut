@@ -1,3 +1,0 @@
-algorithm,hardware,objective_value,runtime_seconds,status,seed,graph_id,n_nodes,n_edges,density,repetition,run_id,backend,graph_seed
-simulated_annealing,cpu,34.0,0.0702245999709703,completed,1109,er_sparse_n20,20,39,0.2,1,run_000001,cpu,4962
-simulated_annealing,cpu,173.0,0.0696293999790214,completed,2118,er_sparse_n50,50,251,0.2,1,run_000002,cpu,4992

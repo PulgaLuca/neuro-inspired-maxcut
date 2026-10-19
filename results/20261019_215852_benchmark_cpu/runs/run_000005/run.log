@@ -1,5 +1,0 @@
-status=completed
-algorithm=simulated_annealing
-backend=cpu
-objective_value=13980.0
-runtime_seconds=0.09175929997581989

@@ -5,6 +5,8 @@ import json
 from algorithms.exact import ExactMaxCut
 from algorithms.simulated_annealing import SimulatedAnnealing
 from graphs.erdos_renyi import erdos_renyi
+from config.loader import load_gset, resolve_gset_instances
+from graphs.gset import gset_directory
 from storage.results import save_run, append_result
 
 
@@ -24,11 +26,28 @@ def plan_runs(config: dict) -> list[dict]:
     plan = []
     rep_count = config["experiment"]["repetitions"]
     for graph_spec in config["graphs"]:
-        for size in graph_spec["sizes"]:
+        if graph_spec["type"] == "gset":
+            graph_instances = (
+                (None, instance)
+                for instance in resolve_gset_instances(
+                    graph_spec.get("instances", "all"), graph_spec.get("path")
+                )
+            )
+        else:
+            graph_instances = ((size, None) for size in graph_spec["sizes"])
+
+        for size, instance in graph_instances:
             for algorithm_spec in config["algorithms"]:
                 for backend_spec in config["backends"]:
                     for rep in range(rep_count):
-                        plan.append({"graph": graph_spec, "size": size, "algorithm": algorithm_spec, "backend": backend_spec, "repetition": rep + 1})
+                        plan.append({
+                            "graph": graph_spec,
+                            "size": size,
+                            "instance": instance,
+                            "algorithm": algorithm_spec,
+                            "backend": backend_spec,
+                            "repetition": rep + 1,
+                        })
     return plan
 
 
@@ -42,9 +61,22 @@ def execute_plan(config: dict, config_path: Path, experiment_dir: Path, plan: li
     for idx, item in enumerate(plan, start=1):
         gs, alg_spec, backend_spec = item["graph"], item["algorithm"], item["backend"]
         rep, n = item["repetition"], item["size"]
-        graph_seed = base_seed + sum((i + 1) * ord(c) for i, c in enumerate(str(gs["name"]))) + n
-        graph_key = (gs["name"], n, graph_seed, gs.get("density", 0.3), gs.get("weighted", False))
-        graph_id = f"{gs['name']}_n{n}"
+        instance = item.get("instance")
+        if gs["type"] == "gset":
+            graph_seed = None
+            graph_id = instance
+            graph_key = ("gset", str(gset_directory(gs.get("path"))), instance)
+        else:
+            graph_seed = (
+                base_seed
+                + sum((i + 1) * ord(c) for i, c in enumerate(str(gs["name"])))
+                + n
+            )
+            graph_id = f"{gs['name']}_n{n}"
+            graph_key = (
+                gs["name"], n, graph_seed, gs.get("density", 0.3),
+                gs.get("weighted", False),
+            )
         
         run_seed = base_seed + idx * 1009 + rep
         run_id = f"run_{idx:06d}"
@@ -55,20 +87,35 @@ def execute_plan(config: dict, config_path: Path, experiment_dir: Path, plan: li
             "time_limit_seconds": time_limit,
         }
         graph_meta = {
-            "graph_id": graph_id, "type": gs["type"], "size": n,
-            "density": gs.get("density"), "weighted": gs.get("weighted", False),
-            "graph_seed": graph_seed,
+            "graph_id": graph_id,
+            "type": gs["type"],
+            "size": n,
+            "density": gs.get("density"),
+            "weighted": gs.get("weighted", False),
         }
+        if graph_seed is not None:
+            graph_meta["graph_seed"] = graph_seed
+        if instance is not None:
+            graph_meta["instance"] = instance
+            graph_meta["source_file"] = str(
+                gset_directory(gs.get("path")) / instance / f"{instance}.txt"
+            )
         try:
             if graph_key not in graph_cache:
-                if gs["type"] != "erdos_renyi":
+                if gs["type"] == "gset":
+                    graph_cache[graph_key] = load_gset(
+                        instance, directory=gs.get("path")
+                    )[instance]
+                    graph_meta["size"] = graph_cache[graph_key].n_variables
+                elif gs["type"] == "erdos_renyi":
+                    graph_cache[graph_key] = erdos_renyi(
+                        n=n, p=float(gs.get("density", 0.3)), seed=graph_seed,
+                        weighted=bool(gs.get("weighted", False)))
+                else:
                     raise ValueError(f"Tipo di grafo non implementato: {gs['type']}")
-                
-                graph_cache[graph_key] = erdos_renyi(
-                    n=n, p=float(gs.get("density", 0.3)), seed=graph_seed,
-                    weighted=bool(gs.get("weighted", False)))
             
             graph = graph_cache[graph_key]
+            graph_meta["size"] = graph.n_variables
             algorithm = _build_algorithm(alg_spec)
             
             start = time.perf_counter()
@@ -94,7 +141,9 @@ def execute_plan(config: dict, config_path: Path, experiment_dir: Path, plan: li
                 save_logs=bool(output.get("save_logs", True)))
             
             result_data.update({"algorithm": alg_spec["name"], "backend": backend_spec["name"],
-                                "seed": run_seed, "graph_seed": graph_seed})
+                                "seed": run_seed})
+            if graph_seed is not None:
+                result_data["graph_seed"] = graph_seed
 
             # Aggiorna il result JSON con campi tabellari completi.
             (run_dir/"result.json").write_text(json.dumps(result_data, indent=2), encoding="utf-8")

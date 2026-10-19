@@ -41,11 +41,14 @@ def save_run(run_dir: Path, problem, result, params: dict, graph_meta: dict,
     graph_data = {
         "name": graph_meta["graph_id"], "n_nodes": problem.n_variables,
         "edges": [
-            {"u": int(i), "v": int(j), "weight": float(problem.weights[i, j])}
-            for i in range(problem.n_variables) for j in range(i + 1, problem.n_variables)
-            if problem.weights[i, j] != 0
+            {"u": u, "v": v, "weight": weight}
+            for u, v, weight in problem.iter_edges()
         ],
     }
+    if graph_meta.get("type") is not None:
+        graph_data["type"] = graph_meta["type"]
+    if graph_meta.get("instance") is not None:
+        graph_data["instance"] = graph_meta["instance"]
     (run_dir / "graph.json").write_text(json.dumps(graph_data, indent=2), encoding="utf-8")
     if save_graph_image:
         graph = to_networkx(problem)
@@ -64,8 +67,11 @@ def save_run(run_dir: Path, problem, result, params: dict, graph_meta: dict,
         }, indent=2), encoding="utf-8")
     result_data = result.to_dict()
     result_data.update({"graph_id": graph_meta["graph_id"], "n_nodes": problem.n_variables,
-                        "n_edges": len(graph_data["edges"]), "density": graph_meta.get("density"),
+                        "n_edges": problem.n_edges, "density": graph_meta.get("density"),
                         "repetition": params["repetition"], "run_id": params["run_id"]})
+    for key in ("type", "instance", "source_file"):
+        if graph_meta.get(key) is not None:
+            result_data["graph_type" if key == "type" else key] = graph_meta[key]
     (run_dir / "result.json").write_text(json.dumps(result_data, indent=2), encoding="utf-8")
     if save_logs:
         (run_dir / "run.log").write_text(
@@ -79,8 +85,26 @@ def append_result(experiment_dir: Path, result_data: dict):
         f.write(json.dumps(result_data, ensure_ascii=False) + "\n")
     csv_path = experiment_dir / "summary.csv"
     flat = {k: v for k, v in result_data.items() if not isinstance(v, (dict, list))}
-    exists = csv_path.stat().st_size > 0
+    if csv_path.stat().st_size == 0:
+        with csv_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(flat))
+            writer.writeheader()
+            writer.writerow(flat)
+        return
+
+    with csv_path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        existing_fields = reader.fieldnames or []
+        existing_rows = list(reader)
+
+    fieldnames = existing_fields + [
+        key for key in flat if key not in existing_fields
+    ]
+    if fieldnames != existing_fields:
+        with csv_path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(existing_rows)
+
     with csv_path.open("a", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(flat.keys()), extrasaction="ignore")
-        if not exists: writer.writeheader()
-        writer.writerow(flat)
+        csv.DictWriter(f, fieldnames=fieldnames).writerow(flat)

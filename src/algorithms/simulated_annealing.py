@@ -37,7 +37,7 @@ class SimulatedAnnealing:
     def _solve_cpu(self, graph, seed: int, time_limit_seconds: float | None = None) -> SolveResult:
         start = time.perf_counter()
         rng = np.random.default_rng(seed)
-        n, w = graph.n_variables, graph.weights
+        n = graph.n_variables
         current = rng.choice(np.array([-1, 1], dtype=np.int8), size=n)
         
         current_value = graph.evaluate(current)
@@ -53,7 +53,7 @@ class SimulatedAnnealing:
             temperature = self.initial_temperature * (self.final_temperature/self.initial_temperature) ** fraction
             i = int(rng.integers(n))
             # Delta del taglio quando si inverte s_i.
-            delta = float(current[i] * np.dot(w[i], current))
+            delta = graph.flip_delta(current, i)
             
             if delta >= 0 or rng.random() < np.exp(delta / max(temperature, 1e-12)):
                 current[i] *= -1

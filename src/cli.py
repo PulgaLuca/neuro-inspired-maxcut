@@ -32,7 +32,12 @@ def plan(config: Path = typer.Option(..., "--config", "-c", exists=True, readabl
     runs = plan_runs(cfg)
     typer.echo(f"Planned runs: {len(runs)}")
     for i, item in enumerate(runs, 1):
-        typer.echo(f"{i:04d}. graph={item['graph']['name']} n={item['size']} "
+        graph_label = (
+            f"graph={item['instance']}"
+            if item.get("instance") is not None
+            else f"graph={item['graph']['name']} n={item['size']}"
+        )
+        typer.echo(f"{i:04d}. {graph_label} "
                    f"algorithm={item['algorithm']['name']} backend={item['backend']['name']} "
                    f"repetition={item['repetition']}")
 

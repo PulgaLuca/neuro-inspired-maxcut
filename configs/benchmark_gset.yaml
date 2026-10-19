@@ -1,0 +1,29 @@
+experiment:
+  name: "benchmark_gset"
+  seed: 99
+  repetitions: 2
+  output:
+    root: "results"
+    save_graph_image: false
+    save_solution: true
+    save_logs: true
+
+execution:
+  time_limit_seconds: 60
+  fail_fast: false
+
+graphs:
+  - name: "gset"
+    type: "gset"
+    instances: ["G1", "G2"]
+
+algorithms:
+  - name: "simulated_annealing"
+    params:
+      steps: 10000
+      initial_temperature: 10.0
+      final_temperature: 0.01
+
+backends:
+  - name: "cpu"
+    params: {}

@@ -1,24 +1,37 @@
 from typing import List
 
-from config.loader import SUPPORTED_ALGORITHMS, SUPPORTED_GRAPHS, SUPPORTED_HARDWARE
+from config.loader import (
+    SUPPORTED_ALGORITHMS,
+    SUPPORTED_GRAPHS,
+    SUPPORTED_HARDWARE,
+    load_gset,
+    resolve_gset_instances,
+)
 
 
 def validate_config(config: dict) -> List[str]:
     errors: List[str] = []
+    graph_sizes: dict[int, list[int]] = {}
 
     errors.extend(_validate_experiment_configuration(config.get("experiment", {})))
     errors.extend(_validate_execution_configuration(config.get("execution", {})))
-    errors.extend(_validate_graphs_configuration(config.get("graphs", [])))
+    errors.extend(_validate_graphs_configuration(config.get("graphs", []), graph_sizes))
     errors.extend(_validate_algorithms_configuration(config.get("algorithms", [])))
     errors.extend(_validate_backends_configuration(config.get("backends", [])))
 
-    for graph in config.get("graphs", []):
-        if isinstance(graph, dict) and isinstance(graph.get("sizes"), list):
+    for graph_index, graph in enumerate(config.get("graphs", [])):
+        if isinstance(graph, dict):
             for algo in config.get("algorithms", []):
                 if isinstance(algo, dict) and algo.get("name") == "exact":
                     limit = int(algo.get("params", {}).get("max_nodes", 24))
-                    if any(isinstance(n, int) and n > limit for n in graph["sizes"]):
-                        errors.append(f"Configured Exact with max_nodes={limit}, but '{graph.get('name')}' contains a superior size.")
+                    sizes = graph_sizes.get(graph_index, graph.get("sizes", []))
+                    if isinstance(sizes, list) and any(
+                        isinstance(n, int) and n > limit for n in sizes
+                    ):
+                        errors.append(
+                            f"Configured Exact with max_nodes={limit}, but "
+                            f"'{graph.get('name')}' contains a superior size."
+                        )
     return errors
 
 
@@ -51,8 +64,13 @@ def _validate_execution_configuration(execution: dict) -> List[str]:
     return errors
 
 
-def _validate_graphs_configuration(graphs: list) -> List[str]:
+def _validate_graphs_configuration(
+    graphs: list, graph_sizes: dict[int, list[int]] | None = None
+) -> List[str]:
     errors: List[str] = []
+
+    if not isinstance(graphs, list):
+        return ["'graphs' must be a list."]
     
     for i, graph in enumerate(graphs):
         prefix = f"graphs[{i}]"
@@ -67,9 +85,27 @@ def _validate_graphs_configuration(graphs: list) -> List[str]:
         if kind not in SUPPORTED_GRAPHS:
             errors.append(f"{prefix}.type not supported: {kind!r}.")
         
-        sizes = graph.get("sizes")
-        if not isinstance(sizes, list) or not sizes or any(not isinstance(n, int) or n < 1 for n in sizes):
-            errors.append(f"{prefix}.sizes must be a positive integer list.")
+        if kind == "gset":
+            instances = graph.get("instances", "all")
+            directory = graph.get("path")
+            if directory is not None and not isinstance(directory, str):
+                errors.append(f"{prefix}.path must be a string.")
+                continue
+            try:
+                selected = resolve_gset_instances(instances, directory)
+                sizes = []
+                for instance in selected:
+                    sizes.append(load_gset(instance, directory)[instance].n_variables)
+                if graph_sizes is not None:
+                    graph_sizes[i] = sizes
+            except (FileNotFoundError, OSError, ValueError) as exc:
+                errors.append(f"{prefix}.instances: {exc}")
+        else:
+            sizes = graph.get("sizes")
+            if not isinstance(sizes, list) or not sizes or any(
+                not isinstance(n, int) or n < 1 for n in sizes
+            ):
+                errors.append(f"{prefix}.sizes must be a positive integer list.")
         
         density = graph.get("density", 0.3)
         if kind == "erdos_renyi" and (not isinstance(density, (int, float)) or not 0 <= density <= 1):

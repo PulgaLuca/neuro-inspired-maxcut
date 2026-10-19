@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 import yaml
+from graphs.gset import load_gset, resolve_gset_instances
 
 SUPPORTED_CONFIGURATIONS_PATH = (
     Path(__file__).resolve().parents[2]
