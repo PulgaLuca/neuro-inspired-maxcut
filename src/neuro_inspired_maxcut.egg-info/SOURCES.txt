@@ -1,13 +1,12 @@
 README.md
 pyproject.toml
+src/cli.py
 src/algorithms/__init__.py
 src/algorithms/base.py
 src/algorithms/exact.py
 src/algorithms/hopfield.py
 src/algorithms/local_search.py
 src/algorithms/simulated_annealing.py
-src/algorithms/snn/base.py
-src/algorithms/snn/literature_model.py
 src/config/__init__.py
 src/config/loader.py
 src/config/validation.py
@@ -16,9 +15,6 @@ src/experiments/runner.py
 src/graphs/__init__.py
 src/graphs/base.py
 src/graphs/erdos_renyi.py
-src/graphs/gset.py
-src/graphs/random_graph.py
-src/graphs/regular.py
 src/metrics/__init__.py
 src/metrics/energy.py
 src/metrics/quality.py

@@ -1,2 +1,2 @@
 [console_scripts]
-neuro-inspired-maxcut = neuro_inspired_maxcut.cli:app
+neuro-inspired-maxcut = cli:app

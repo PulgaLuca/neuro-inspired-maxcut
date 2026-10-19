@@ -1,9 +1,8 @@
 algorithms
-analysis
+cli
 config
 experiments
 graphs
 metrics
-notebooks
 problems
 storage

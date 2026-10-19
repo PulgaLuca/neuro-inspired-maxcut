@@ -14,12 +14,12 @@ dependencies = [
     "pydantic",
     "PyYAML",
     "typer",
+    "matplotlib",
 ]
 
 [project.optional-dependencies]
 analysis = [
     "pandas",
-    "matplotlib",
 ]
 dev = [
     "pytest",
@@ -27,7 +27,10 @@ dev = [
 ]
 
 [project.scripts]
-neuro-inspired-maxcut = "neuro_inspired_maxcut.cli:app"
+neuro-inspired-maxcut = "cli:app"
+
+[tool.setuptools]
+py-modules = ["cli"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

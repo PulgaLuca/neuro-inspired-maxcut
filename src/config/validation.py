@@ -12,7 +12,6 @@ def validate_config(config: dict) -> List[str]:
     errors.extend(_validate_algorithms_configuration(config.get("algorithms", [])))
     errors.extend(_validate_backends_configuration(config.get("backends", [])))
 
-    # Limitazioni dell'implementazione esatta: segnala in validazione, prima di lanciare.
     for graph in config.get("graphs", []):
         if isinstance(graph, dict) and isinstance(graph.get("sizes"), list):
             for algo in config.get("algorithms", []):

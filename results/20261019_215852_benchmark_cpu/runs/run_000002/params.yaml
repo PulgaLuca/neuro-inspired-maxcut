@@ -1,0 +1,21 @@
+graph:
+  graph_id: er_sparse_n100
+  type: erdos_renyi
+  size: 100
+  density: 0.2
+  weighted: false
+  graph_seed: 5042
+run:
+  run_id: run_000002
+  repetition: 2
+  seed: 2119
+  algorithm:
+    name: simulated_annealing
+    params:
+      steps: 10000
+      initial_temperature: 10.0
+      final_temperature: 0.01
+  backend:
+    name: cpu
+    params: {}
+  time_limit_seconds: 60.0

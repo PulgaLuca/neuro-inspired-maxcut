@@ -4,10 +4,10 @@ scipy
 pydantic
 PyYAML
 typer
+matplotlib
 
 [analysis]
 pandas
-matplotlib
 
 [dev]
 pytest

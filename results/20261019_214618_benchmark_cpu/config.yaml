@@ -1,0 +1,29 @@
+experiment:
+  name: benchmark_cpu
+  seed: 99
+  repetitions: 1
+  output:
+    root: results
+    save_graph_image: true
+    save_solution: true
+    save_logs: true
+execution:
+  time_limit_seconds: 60
+  fail_fast: false
+graphs:
+- name: er_sparse
+  type: erdos_renyi
+  sizes:
+  - 20
+  - 50
+  density: 0.2
+  weighted: false
+algorithms:
+- name: simulated_annealing
+  params:
+    steps: 10000
+    initial_temperature: 10.0
+    final_temperature: 0.01
+backends:
+- name: cpu
+  params: {}

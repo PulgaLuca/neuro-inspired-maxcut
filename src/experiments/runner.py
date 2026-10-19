@@ -7,6 +7,7 @@ from algorithms.simulated_annealing import SimulatedAnnealing
 from graphs.erdos_renyi import erdos_renyi
 from storage.results import save_run, append_result
 
+
 def _build_algorithm(spec):
     name, params = spec["name"], dict(spec.get("params", {}))
     
@@ -18,6 +19,7 @@ def _build_algorithm(spec):
     
     raise ValueError(f"Algorithm not implemented yet: {name}")
 
+
 def plan_runs(config: dict) -> list[dict]:
     plan = []
     rep_count = config["experiment"]["repetitions"]
@@ -28,6 +30,7 @@ def plan_runs(config: dict) -> list[dict]:
                     for rep in range(rep_count):
                         plan.append({"graph": graph_spec, "size": size, "algorithm": algorithm_spec, "backend": backend_spec, "repetition": rep + 1})
     return plan
+
 
 def execute_plan(config: dict, config_path: Path, experiment_dir: Path, plan: list[dict]) -> dict:
     base_seed = int(config["experiment"]["seed"])

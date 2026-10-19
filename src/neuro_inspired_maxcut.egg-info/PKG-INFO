@@ -9,9 +9,9 @@ Requires-Dist: scipy
 Requires-Dist: pydantic
 Requires-Dist: PyYAML
 Requires-Dist: typer
+Requires-Dist: matplotlib
 Provides-Extra: analysis
 Requires-Dist: pandas; extra == "analysis"
-Requires-Dist: matplotlib; extra == "analysis"
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: ruff; extra == "dev"

@@ -1,7 +1,7 @@
 experiment:
   name: "benchmark_cpu"
   seed: 99
-  repetitions: 1
+  repetitions: 2
   output:
     root: "results"
     save_graph_image: true
@@ -15,8 +15,8 @@ execution:
 graphs:
   - name: "er_sparse"
     type: "erdos_renyi"
-    sizes: [20, 50]
-    density: 0.2
+    sizes: [800]
+    density: 0.01
     weighted: false
 
 algorithms:
