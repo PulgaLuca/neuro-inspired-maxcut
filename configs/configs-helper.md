@@ -315,12 +315,23 @@ ancora GPU, neuromorfico o quantum.
 ## Esperimenti comparabili e risultati
 
 Ogni run salva algoritmo, backend, seed, parametri, istanza/grafo, soluzione,
-obiettivo e tempo nei normali file `result.json`, `results.jsonl` e
-`summary.csv`. Il notebook `notebooks/analisi_run.ipynb` legge i run sotto
-`results/` e consente il confronto di qualità e tempi.
+obiettivo, tempo e misura dei consumi fisici nei normali file `result.json`,
+`results.jsonl` e `summary.csv`. Nel JSON la misura è contenuta nell'oggetto
+`physical_energy` (`joules`, `unit`, `status`, `method`, `scope`, `error`); il
+CSV appiattisce questi valori con nomi come `physical_energy_joules`.
+`joules` è valorizzato solo quando `status` è `measured`; se il sensore manca,
+il valore è `null` e `error` spiega il motivo.
 
 La metrica notebook `energy` è `-cut_value`, cioè l'energia matematica
 dell'obiettivo Max-Cut; **non** misura il consumo elettrico del computer o
-dispositivo. Per confrontare il consumo energetico fisico su CPU, GPU,
-neuromorfico o quantum, occorre implementare una misura per ciascun backend e
-salvarla nei risultati con unità e metodo di misura documentati.
+dispositivo. Il notebook distingue ora `physical_energy_joules` e include la
+media delle misure disponibili nell'analisi per grafo, algoritmo e backend.
+
+La misura fisica CPU legge i contatori package RAPL da Linux powercap. La misura
+GPU legge il contatore energetico totale NVML della GPU NVIDIA selezionata da
+`backends[].params.device_index` (default `0`); installare il supporto con
+`pip install -e ".[energy]"`. Entrambi misurano il package/dispositivo intero
+durante il run, quindi includono attività concorrente e non attribuiscono
+l'energia al solo processo. Su Windows, senza contatore compatibile, GPU non
+NVIDIA e backend neuromorfico/quantum senza provider specifico, il risultato
+indica `unavailable` e non usa stime.

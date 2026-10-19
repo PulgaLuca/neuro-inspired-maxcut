@@ -60,8 +60,25 @@ analizzare energy, quality e timing di una cartella di run o di tutti i risultat
 presenti sotto `results/`.
 
 La metrica `energy` del notebook è l'energia dell'obiettivo Max-Cut (`-cut_value`),
-non una misura fisica dei consumi del dispositivo: la raccolta dei consumi
-hardware non è ancora implementata.
+non il consumo fisico. Ogni nuovo run include `physical_energy` in `result.json`
+e `results.jsonl`; `summary.csv` espone i campi come `physical_energy_joules`,
+`physical_energy_status`, `physical_energy_method`, `physical_energy_scope` e
+`physical_energy_error`. Il valore è in joule solo quando `status` è
+`"measured"`; se un contatore non è disponibile, `joules` è `null` e il motivo
+è registrato in `error`.
+
+La misura CPU usa i contatori package RAPL esposti da Linux powercap. La misura
+GPU usa il contatore energetico totale di una GPU NVIDIA tramite NVML; installa
+il supporto opzionale con `pip install -e ".[energy]"` e, se necessario,
+seleziona la scheda con `backends[].params.device_index` (default `0`). Sono
+misure dell'intero package CPU o dispositivo GPU durante il run, non
+un'attribuzione al singolo processo: includono quindi l'attività concorrente
+sullo stesso dispositivo. Su Windows, GPU non NVIDIA o host senza contatore
+supportato la misura risulta esplicitamente non disponibile. I backend
+neuromorfico e quantum richiedono ancora un provider specifico e per ora
+riportano `status: "unavailable"`. Il notebook include il consumo misurato
+nell'analisi per run, nella media per gruppo e nei grafici; le misure mancanti
+non vengono sostituite con stime.
 
 ## Risultati
 

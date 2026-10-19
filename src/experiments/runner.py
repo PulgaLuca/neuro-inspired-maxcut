@@ -7,6 +7,7 @@ from algorithms.simulated_annealing import SimulatedAnnealing
 from graphs.erdos_renyi import erdos_renyi
 from config.loader import load_gset, resolve_gset_instances
 from graphs.gset import gset_directory
+from metrics.physical_energy import PhysicalEnergyMeter
 from storage.results import save_run, append_result
 
 
@@ -118,14 +119,20 @@ def execute_plan(config: dict, config_path: Path, experiment_dir: Path, plan: li
             graph_meta["size"] = graph.n_variables
             algorithm = _build_algorithm(alg_spec)
             
-            start = time.perf_counter()
-            result = algorithm.solve(
-                graph,
-                hardware=backend_spec["name"],
-                seed=run_seed,
-                time_limit_seconds=time_limit,
+            energy_meter = PhysicalEnergyMeter.start(
+                backend_spec["name"], backend_spec.get("params", {})
             )
-            wall_time = time.perf_counter() - start
+            start = time.perf_counter()
+            try:
+                result = algorithm.solve(
+                    graph,
+                    hardware=backend_spec["name"],
+                    seed=run_seed,
+                    time_limit_seconds=time_limit,
+                )
+                wall_time = time.perf_counter() - start
+            finally:
+                physical_energy = energy_meter.finish()
             
             # Verifica l'obiettivo contro l'implementazione canonica del problema.
             recomputed = graph.evaluate(result.solution)
@@ -141,7 +148,7 @@ def execute_plan(config: dict, config_path: Path, experiment_dir: Path, plan: li
                 save_logs=bool(output.get("save_logs", True)))
             
             result_data.update({"algorithm": alg_spec["name"], "backend": backend_spec["name"],
-                                "seed": run_seed})
+                                "seed": run_seed, "physical_energy": physical_energy})
             if graph_seed is not None:
                 result_data["graph_seed"] = graph_seed
 

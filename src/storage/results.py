@@ -85,6 +85,13 @@ def append_result(experiment_dir: Path, result_data: dict):
         f.write(json.dumps(result_data, ensure_ascii=False) + "\n")
     csv_path = experiment_dir / "summary.csv"
     flat = {k: v for k, v in result_data.items() if not isinstance(v, (dict, list))}
+    physical_energy = result_data.get("physical_energy")
+    if isinstance(physical_energy, dict):
+        flat.update({
+            f"physical_energy_{key}": value
+            for key, value in physical_energy.items()
+            if not isinstance(value, (dict, list))
+        })
     if csv_path.stat().st_size == 0:
         with csv_path.open("w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=list(flat))

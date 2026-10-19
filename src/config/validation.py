@@ -161,7 +161,19 @@ def _validate_backends_configuration(backends: list) -> List[str]:
         if backend.get("name") not in SUPPORTED_HARDWARE:
             errors.append(f"backends[{i}].name not supported: {backend.get('name')!r}.")
         
-        if not isinstance(backend.get("params", {}), dict):
+        params = backend.get("params", {})
+        if not isinstance(params, dict):
             errors.append(f"backends[{i}].params must be a map.")
+            continue
+
+        device_index = params.get("device_index", 0)
+        if backend.get("name") == "gpu" and (
+            isinstance(device_index, bool)
+            or not isinstance(device_index, int)
+            or device_index < 0
+        ):
+            errors.append(
+                f"backends[{i}].params.device_index must be a non-negative integer."
+            )
 
     return errors

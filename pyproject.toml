@@ -21,6 +21,9 @@ dependencies = [
 analysis = [
     "pandas",
 ]
+energy = [
+    "nvidia-ml-py",
+]
 dev = [
     "pytest",
     "ruff",
