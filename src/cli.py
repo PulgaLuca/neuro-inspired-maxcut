@@ -37,9 +37,10 @@ def plan(config: Path = typer.Option(..., "--config", "-c", exists=True, readabl
             if item.get("instance") is not None
             else f"graph={item['graph']['name']} n={item['size']}"
         )
+        suffix = "" if item["supported"] else f" [NON SUPPORTATO: {item['compatibility']}]"
         typer.echo(f"{i:04d}. {graph_label} "
                    f"algorithm={item['algorithm']['name']} backend={item['backend']['name']} "
-                   f"repetition={item['repetition']}")
+                   f"repetition={item['repetition']}{suffix}")
 
 
 @app.command()

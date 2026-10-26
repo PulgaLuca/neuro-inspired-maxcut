@@ -1,10 +1,8 @@
-"""
-Questo generatore restituisce direttamente un MaxCutProblem, così gli algoritmi non devono sapere quale famiglia di grafi è stata utilizzata.
-Per ora la matrice è densa, quindi la memoria cresce come O(n^2). Va bene per prototipi e grafi piccoli/medi, ma per istanze molto grandi introdurremo una rappresentazione sparsa e un'interfaccia di accesso agli archi.
-"""
+"""Erdos-Renyi graph generators returning the domain MaxCutProblem."""
 
 import networkx as nx
 import numpy as np
+from scipy import sparse
 
 from problems.maxcut import MaxCutProblem
 
@@ -27,12 +25,14 @@ def erdos_renyi(
     
     graph = nx.erdos_renyi_graph(n=n, p=p, seed=seed)
     rng = np.random.default_rng(seed)
-    weights = np.zeros((n,n), dtype=np.float64)
-
+    rows, columns, values = [], [], []
     for u, v in graph.edges():
         weight = (float(rng.uniform(weight_low, weight_high)) if weighted else 1.0)
-        weights[u, v] = weight
-        weights[v, u] = weight
+        rows.extend((u, v))
+        columns.extend((v, u))
+        values.extend((weight, weight))
+
+    weights = sparse.coo_matrix((values, (rows, columns)), shape=(n, n)).tocsr()
 
     return MaxCutProblem(weights=weights)
 

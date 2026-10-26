@@ -1,4 +1,6 @@
 algorithms
+analysis
+backends
 cli
 config
 experiments

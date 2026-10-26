@@ -12,6 +12,13 @@ Requires-Dist: typer
 Requires-Dist: matplotlib
 Provides-Extra: analysis
 Requires-Dist: pandas; extra == "analysis"
+Provides-Extra: energy
+Requires-Dist: nvidia-ml-py; extra == "energy"
+Provides-Extra: gpu
+Requires-Dist: cupy-cuda12x>=13; extra == "gpu"
+Provides-Extra: quantum
+Requires-Dist: qiskit>=1.4; extra == "quantum"
+Requires-Dist: qiskit-ibm-runtime>=0.40; extra == "quantum"
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: ruff; extra == "dev"

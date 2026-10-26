@@ -61,7 +61,10 @@ backends:
   altri. Per esempio, 2 grafi, 2 algoritmi, 2 backend e 3 ripetizioni
   pianificano `2 x 2 x 2 x 3 = 24` run.
 - `experiment.seed` rende riproducibili gli esperimenti; `repetitions` deve
-  essere almeno 1.
+  essere almeno 1. Il grafo è generato una sola volta e riusato nel piano.
+  Il seed algoritmo è derivato da seed base, identificativo del grafo e
+  ripetizione: algoritmi e backend confrontati ricevono lo stesso seed per
+  lo stesso grafo e numero di ripetizione.
 - `execution.time_limit_seconds` è il limite per ogni run, non per l'intero
   esperimento. Con `fail_fast: false`, un run fallito viene registrato e il
   runner continua con gli altri.
@@ -135,18 +138,17 @@ per ogni algoritmo e backend del piano.
 
 | Nome YAML | Stato nel repository | Parametri conosciuti |
 |---|---|---|
-| `simulated_annealing` | Eseguibile su CPU | `steps`, `initial_temperature`, `final_temperature` |
-| `exact` | Eseguibile su CPU solo per grafi piccoli | `max_nodes` |
-| `local_search` | Non ancora collegato al runner | Da definire con l'implementazione |
-| `hopfield` | Non ancora collegato al runner | Da definire con l'implementazione |
-| `spiking_neural_network` (SNN) | Non ancora collegato al runner | Da definire con l'implementazione |
-| `boltzmann` | Non implementato né registrato | Nome e parametri da concordare con l'implementazione |
+| `simulated_annealing` | CPU; GPU con CuPy/CUDA e catene parallele | `steps`, temperature, `gpu_replicas` |
+| `exact` | CPU e GPU a batch fino a `max_nodes` | `max_nodes`, `gpu_batch_size` |
+| `local_search` | CPU first-improvement; GPU best-improvement | `max_iterations` |
+| `hopfield` | CPU; dinamica asincrona, aggiornamento casuale dei neuroni | `max_iterations` |
+| `boltzmann` | CPU; campionamento Gibbs/heat-bath a temperatura fissa | `steps`, `temperature` |
+| `spiking_neural_network` (SNN) | Simulatore LIF software su CPU; provider neuromorfico reale non disponibile | `time_steps`, `threshold`, `membrane_decay`, `synaptic_scale`, `refractory_steps` |
+| `qubo` solvers | Non implementati | — |
 
-Gli algoritmi non ancora collegati possono essere accettati dalla validazione
-del nome (quando presenti in `supported_configurations.yaml`), ma la creazione
-del piano di esecuzione fallirà perché il runner non sa ancora istanziarli.
-Non aggiungere parametri ipotetici sperando che vengano usati: il contratto
-`params` dovrà essere definito insieme all'implementazione.
+La validazione accetta soltanto gli algoritmi registrati e implementati.
+Il piano marca esplicitamente le combinazioni hardware non supportate; durante
+`run` diventano errori persistiti, senza fallback.
 
 ### Simulated annealing: esempio eseguibile
 
@@ -160,8 +162,10 @@ algorithms:
 ```
 
 `steps` deve essere almeno 1; entrambe le temperature devono essere positive e
-`final_temperature` non deve superare `initial_temperature`. Il backend CPU è
-quello attualmente implementato.
+`final_temperature` non deve superare `initial_temperature`. La variante GPU
+usa più catene indipendenti; `gpu_replicas` imposta quante catene eseguire in
+parallelo. CPU e GPU usano la stessa scala di temperature ma non la stessa
+traiettoria.
 
 ### Exact: esempio per istanze piccole
 
@@ -173,29 +177,82 @@ algorithms:
 ```
 
 L'algoritmo enumera le soluzioni, quindi il costo cresce esponenzialmente:
-`max_nodes` è un limite di sicurezza, non una stima di tempo. L'implementazione
-CPU supporta solo istanze entro tale limite. Il backend GPU non è implementato.
-Non usare questo algoritmo sulle istanze GSET grandi.
+`max_nodes` è un limite di sicurezza, non una stima di tempo. CPU e GPU
+supportano solo istanze entro tale limite; sulla GPU `gpu_batch_size` regola il
+numero di soluzioni elaborate per batch. Non usare Exact sulle istanze GSET grandi.
 
-### Local search, Hopfield, SNN e Boltzmann: scheletro futuro
+### SNN CPU e provider neuromorfico
 
-Queste voci indicano la forma che avrà una configurazione una volta implementati
-i rispettivi algoritmi; **non sono run eseguibili oggi**. Prima di usarle,
-implementare e registrare l'algoritmo nel runner e definire i parametri ammessi.
+L'implementazione SNN disponibile è un simulatore software CPU con due neuroni
+LIF competitivi per nodo, che codificano gli spin `-1` e `+1`. Produce una
+soluzione Max-Cut verificata come gli altri algoritmi, ma non usa hardware
+neuromorfico. Tempi e contatori di spike descrivono la simulazione CPU; non
+misurano né predicono le prestazioni di un dispositivo neuromorfico.
 
 ```yaml
 algorithms:
-  - name: "local_search"
-    params: {}
-  - name: "hopfield"
-    params: {}
   - name: "spiking_neural_network"
-    params: {}
-  # "boltzmann" va aggiunto alle configurazioni supportate e implementato.
-  # algorithms:
-  #   - name: "boltzmann"
-  #     params: {}
+    params:
+      time_steps: 1000
+      threshold: 1.0
+      membrane_decay: 0.2
+      synaptic_scale: 0.1
+      refractory_steps: 1
 ```
+
+`time_steps` è il numero massimo di passi, `threshold` la soglia di spike,
+`membrane_decay` la perdita di potenziale per passo, `synaptic_scale` la scala
+dell'input e `refractory_steps` il periodo refrattario. Il seed controlla stato
+iniziale e ordine di aggiornamento. La simulazione CPU si può includere nel
+confronto `configs/benchmark_heuristics_cpu.yaml`.
+
+Il backend `neuromorphic` è intenzionalmente non disponibile finché non viene
+registrato un provider hardware. Un'integrazione deve fornire un adapter
+algoritmo per `spiking_neural_network` tramite
+`register_backend_implementation(...)` e dichiarare il provider disponibile
+con `register_backend(BackendCapability(...))`, prima di pianificare le run.
+Un contatore energetico specifico si registra separatamente con
+`register_physical_energy_provider(...)`. Il modulo del provider va caricato
+esplicitamente dall'applicazione; il framework non simula automaticamente
+l'hardware. Senza un contatore fisico, l'energia rimane `null` con stato
+`unavailable`.
+
+### Hopfield CPU
+
+```yaml
+algorithms:
+  - name: "hopfield"
+    params:
+      max_iterations: 100000
+```
+
+Hopfield usa aggiornamenti asincroni con ordine dei neuroni casuale. La rete
+usa accoppiamenti `-W`, dove `W` è la matrice pesi del grafo: ogni aggiornamento
+che cambia uno spin aumenta strettamente il taglio; in caso di pareggio lo spin
+resta invariato. `max_iterations` limita le valutazioni dei neuroni. Il risultato
+registra aggiornamenti, flip, passate complete e convergenza. Questa variante è
+CPU-only e usa lo stesso contratto del risultato normalizzato degli altri
+algoritmi. Per un confronto diretto con Local Search è disponibile
+`configs/benchmark_heuristics_cpu.yaml`.
+
+### Boltzmann Machine CPU
+
+```yaml
+algorithms:
+  - name: "boltzmann"
+    params:
+      steps: 50000
+      temperature: 1.0
+```
+
+Boltzmann usa aggiornamenti Gibbs (heat-bath): a ogni passo sceglie un neurone
+e lo ricampiona dalla distribuzione condizionale alla temperatura fissa
+`temperature`. Restituisce lo stato con il miglior taglio incontrato durante
+la catena. Si distingue da Simulated Annealing perché usa probabilità
+condizionali e non proposte Metropolis con raffreddamento. `steps` conta gli
+aggiornamenti dei neuroni; seed e parametri sono salvati in ogni run. È
+attualmente CPU-only. L'esempio `configs/benchmark_heuristics_cpu.yaml`
+confronta Boltzmann con Hopfield e Local Search.
 
 È possibile elencare più algoritmi nello stesso file quando sono disponibili:
 il piano eseguirà ciascuno su ogni grafo e backend selezionato.
@@ -210,15 +267,28 @@ backends:
     params: {}
 ```
 
-I nomi `cpu`, `gpu`, `neuromorphic` e `quantum` sono attualmente presenti tra
-i valori ammessi. Questo non significa che siano tutti utilizzabili: oggi
-`simulated_annealing` e `exact` eseguono solo il percorso CPU; il percorso GPU
-è incompleto e non esistono ancora adattatori per dispositivi quantum o
-neuromorfici. Perciò le configurazioni qui sotto documentano scenari futuri e
-non devono essere considerate eseguibili.
+CPU è sempre disponibile. Le varianti GPU di Exact, Local Search e Simulated
+Annealing richiedono CuPy e un dispositivo CUDA utilizzabile. Installare
+`pip install -e ".[gpu]"` (extra basato su CUDA 12) e selezionare il dispositivo:
 
 ```yaml
-# Solo dopo aver implementato i backend corrispondenti:
+backends:
+  - name: "gpu"
+    params:
+      device_index: 0
+```
+
+`plan` controlla provider e disponibilità della scheda. Se CuPy o CUDA mancano,
+la combinazione è marcata non supportata e `run` persiste un errore; non c'è
+fallback CPU. Local Search GPU usa best-improvement invece del first-improvement
+CPU. Simulated Annealing GPU usa più catene indipendenti (`gpu_replicas`), mentre
+Exact enumera in batch (`gpu_batch_size`). Le strategie sono registrate nei
+metadati per rendere leggibili i confronti. Quantum e neuromorfico richiedono
+ancora provider dedicati per l'hardware reale; `quantum_simulator` è invece
+un backend classico separato per QAOA.
+
+```yaml
+# GPU e provider hardware opzionali:
 backends:
   - name: "gpu"
     params:
@@ -237,6 +307,64 @@ opzioni implementate o validate dal progetto. Definire i nomi e i significati
 dei parametri quando si integra il relativo SDK o dispositivo. Analogamente,
 un backend elencato da solo non rende un algoritmo compatibile con esso:
 l'algoritmo deve implementare il percorso per quell'hardware.
+
+### QAOA: simulatore e provider quantistico
+
+`qaoa` supporta sia il backend `quantum_simulator` sia IBM Quantum Runtime. Il
+simulatore è CPU NumPy con vettore di stato di dimensione `2^n`, utile solo come
+riferimento per grafi piccoli. L'implementazione IBM invia circuiti QAOA a
+`SamplerV2` su un QPU reale; ogni esecuzione è stocastica e richiede accesso,
+quote e tempo di coda. `max_nodes` è un limite software per il grafo. La scelta
+del backend è esplicita: `quantum` non fa fallback al simulatore.
+
+```yaml
+algorithms:
+  - name: "qaoa"
+    params:
+      depth: 1
+      optimizer_iterations: 30
+      optimizer_restarts: 2
+      max_nodes: 16
+backends:
+  - name: "quantum_simulator"
+    params: {}
+```
+
+I risultati identificano `provider: numpy_statevector_simulator`,
+`device: CPU state-vector simulation` e `quantum_hardware_used: false`.
+Il contatore RAPL, se disponibile, misura il package CPU usato dal simulatore,
+non hardware quantistico.
+
+Per IBM installare `pip install -e ".[quantum]"`. L'autenticazione usa prima
+`IBM_QUANTUM_TOKEN`; se non impostata, legge `apikey` dal file locale ignorato
+da Git `src/apikey.json`. In alternativa si può indicare un file credenziali
+esterno con `IBM_QUANTUM_TOKEN_FILE`. Non mettere token in YAML. Il canale di
+default è `ibm_quantum_platform`; si può indicare un backend preciso oppure
+lasciare che il provider selezioni il meno occupato con il numero di qubit
+necessario:
+
+```yaml
+backends:
+  - name: "quantum"
+    params:
+      channel: "ibm_quantum_platform"
+      # backend_name: "ibm_backend_name"  # opzionale
+      # instance: "instance-id"            # opzionale
+```
+
+Il piano controlla SDK e token locali. Il collegamento, l'autorizzazione e la
+disponibilità del QPU vengono verificati al `run`; errori di autenticazione o
+di servizio diventano run fallite con diagnosi, senza sostituire il simulatore.
+I metadati riportano backend IBM, identificativi dei job, depth e shots; non
+includono token. I contatori energetici QPU non sono disponibili, quindi
+`physical_energy.joules` resta nullo.
+
+`configs/benchmark_qaoa_simulator.yaml` è l'esempio QAOA simulato e
+`configs/benchmark_qaoa_ibm.yaml` è l'esempio su QPU IBM.
+Per confrontare gli stessi grafi con euristiche CPU usare
+`configs/benchmark_qaoa_cpu.yaml`; sono configurazioni separate perché il
+framework pianifica il prodotto cartesiano tra algoritmi e backend e non deve
+associare QAOA al backend CPU o le euristiche al simulatore quantistico.
 
 ## Esempi di scenari
 
@@ -281,10 +409,13 @@ backends:
 Se l'istanza supera `max_nodes`, la validazione la segnala per `exact`; per
 grafi più grandi rimuovere `exact` e usare algoritmi euristici già implementati.
 
-### Matrice di algoritmi e dispositivi (schema futuro)
+### Matrice ampia (frammento illustrativo)
 
-Quando gli algoritmi e i backend saranno implementati, una singola
-configurazione potrà descrivere il prodotto cartesiano desiderato:
+Il seguente frammento mostra un confronto misto, ma non è una configurazione
+eseguibile completa: Hopfield e SNN supportano solo CPU, mentre le altre tre
+implementazioni supportano CPU e GPU quando CuPy/CUDA sono disponibili. Le
+combinazioni senza provider vengono segnalate dal piano. Il backend neuromorfico
+richiede un adapter dedicato come descritto sopra.
 
 ```yaml
 algorithms:
@@ -296,7 +427,8 @@ algorithms:
   - name: "hopfield"
     params: {}
   - name: "spiking_neural_network"
-    params: {}
+    params:
+      time_steps: 1000
 backends:
   - name: "cpu"
     params: {}
@@ -308,9 +440,9 @@ backends:
     params: {}
 ```
 
-L'esempio è uno schema, non un esperimento avviabile con le implementazioni
-attuali: alcuni algoritmi non sono collegati e simulated annealing non supporta
-ancora GPU, neuromorfico o quantum.
+Per un confronto Hopfield/Local Search avviabile subito, usare
+`configs/benchmark_heuristics_cpu.yaml`; per gli algoritmi con varianti CPU/GPU
+è disponibile `configs/benchmark_cpu_gpu.yaml`.
 
 ## Esperimenti comparabili e risultati
 

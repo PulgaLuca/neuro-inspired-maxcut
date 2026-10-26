@@ -1,4 +1,5 @@
 import csv, json, platform, sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from datetime import datetime
 import yaml
@@ -27,6 +28,22 @@ def create_experiment_dir(config: dict, config_path: Path) -> Path:
         "platform": platform.platform(),
         "numpy": np.__version__,
     }
+    for distribution in ("cupy-cuda12x", "cupy-cuda13x", "cupy-cuda11x", "cupy"):
+        try:
+            metadata["cupy"] = version(distribution)
+            break
+        except PackageNotFoundError:
+            continue
+    else:
+        metadata["cupy"] = None
+    if metadata["cupy"] is not None:
+        try:
+            import cupy
+
+            metadata["cuda_runtime"] = int(cupy.cuda.runtime.runtimeGetVersion())
+        except Exception as exc:
+            metadata["cuda_runtime"] = None
+            metadata["cuda_runtime_error"] = f"{type(exc).__name__}: {exc}"
     (target / "environment.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     (target / "results.jsonl").touch()
     (target / "summary.csv").touch()
@@ -92,7 +109,7 @@ def append_result(experiment_dir: Path, result_data: dict):
             for key, value in physical_energy.items()
             if not isinstance(value, (dict, list))
         })
-    if csv_path.stat().st_size == 0:
+    if not csv_path.exists() or csv_path.stat().st_size == 0:
         with csv_path.open("w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=list(flat))
             writer.writeheader()

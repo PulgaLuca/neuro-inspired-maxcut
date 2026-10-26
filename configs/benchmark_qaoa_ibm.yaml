@@ -1,0 +1,34 @@
+experiment:
+  name: "benchmark_qaoa_ibm"
+  seed: 2718
+  repetitions: 3
+  output:
+    root: "results"
+    save_graph_image: false
+    save_solution: true
+    save_logs: true
+
+execution:
+  time_limit_seconds: 1800
+  fail_fast: false
+
+graphs:
+  - name: "er_ibm_qaoa_small"
+    type: "erdos_renyi"
+    sizes: [5]
+    density: 0.5
+    weighted: false
+
+algorithms:
+  - name: "qaoa"
+    params:
+      depth: 1
+      optimizer_iterations: 2
+      optimizer_restarts: 1
+      shots: 256
+      max_nodes: 20
+
+backends:
+  - name: "quantum"
+    params:
+      channel: "ibm_quantum_platform"

@@ -24,6 +24,13 @@ analysis = [
 energy = [
     "nvidia-ml-py",
 ]
+gpu = [
+    "cupy-cuda12x>=13",
+]
+quantum = [
+    "qiskit>=1.4",
+    "qiskit-ibm-runtime>=0.40",
+]
 dev = [
     "pytest",
     "ruff",
@@ -34,6 +41,7 @@ neuro-inspired-maxcut = "cli:app"
 
 [tool.setuptools]
 py-modules = ["cli"]
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

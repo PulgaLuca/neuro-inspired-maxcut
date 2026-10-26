@@ -1,0 +1,43 @@
+experiment:
+  name: "benchmark_heuristics_cpu"
+  seed: 99
+  repetitions: 5
+  output:
+    root: "results"
+    save_graph_image: false
+    save_solution: true
+    save_logs: true
+
+execution:
+  time_limit_seconds: 60
+  fail_fast: false
+
+graphs:
+  - name: "er_heuristics"
+    type: "erdos_renyi"
+    sizes: [100]
+    density: 0.2
+    weighted: false
+
+algorithms:
+  - name: "local_search"
+    params:
+      max_iterations: 10000
+  - name: "hopfield"
+    params:
+      max_iterations: 100000
+  - name: "boltzmann"
+    params:
+      steps: 20000
+      temperature: 1.0
+  - name: "spiking_neural_network"
+    params:
+      time_steps: 500
+      threshold: 1.0
+      membrane_decay: 0.2
+      synaptic_scale: 0.1
+      refractory_steps: 1
+
+backends:
+  - name: "cpu"
+    params: {}

@@ -6,11 +6,14 @@ supported_algorithms:
   - exact
   - local_search
   - simulated_annealing
-  - spiking_neural_network
   - hopfield
+  - boltzmann
+  - spiking_neural_network
+  - qaoa
 
 supported_hardware:
   - cpu
   - gpu
   - neuromorphic
   - quantum
+  - quantum_simulator

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from contracts import SolveResult
+from problems.maxcut import MaxCutProblem
 
 class Algorithm(ABC):
     """
@@ -12,7 +13,14 @@ class Algorithm(ABC):
     name: str
 
     @abstractmethod
-    def solve(self, graph, hardware: str, seed: int, time_limit_seconds: int, **params) -> SolveResult:
+    def solve(
+        self,
+        graph: MaxCutProblem,
+        hardware: str,
+        seed: int,
+        time_limit_seconds: float | None = None,
+        **params,
+    ) -> SolveResult:
         """
         Solve a given problem and it returns a SolveResult object.
 

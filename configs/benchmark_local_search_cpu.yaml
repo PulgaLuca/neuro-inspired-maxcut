@@ -1,0 +1,29 @@
+experiment:
+  name: "benchmark_local_search_cpu"
+  seed: 99
+  repetitions: 2
+  output:
+    root: "results"
+    save_graph_image: true
+    save_solution: true
+    save_logs: true
+
+execution:
+  time_limit_seconds: 60
+  fail_fast: false
+
+graphs:
+  - name: "er_sparse"
+    type: "erdos_renyi"
+    sizes: [100]
+    density: 0.2
+    weighted: false
+
+algorithms:
+  - name: "local_search"
+    params:
+      max_iterations: 10000
+
+backends:
+  - name: "cpu"
+    params: {}

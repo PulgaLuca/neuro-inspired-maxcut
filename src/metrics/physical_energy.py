@@ -1,4 +1,5 @@
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -17,6 +18,11 @@ class _EnergyCounter(Protocol):
     def difference_joules(self, start: Snapshot, end: Snapshot) -> float: ...
 
     def close(self) -> None: ...
+
+
+_EXTERNAL_ENERGY_PROVIDERS: dict[
+    str, Callable[[dict[str, Any]], "PhysicalEnergyMeter"]
+] = {}
 
 
 @dataclass(frozen=True)
@@ -94,7 +100,7 @@ class PhysicalEnergyMeter:
     @classmethod
     def start(cls, backend: str, params: dict | None = None) -> "PhysicalEnergyMeter":
         params = params or {}
-        if backend == "cpu":
+        if backend in {"cpu", "quantum_simulator"}:
             method = "linux_powercap_rapl_package_energy_counter"
             scope = "cpu_package"
             try:
@@ -109,6 +115,14 @@ class PhysicalEnergyMeter:
             except _EnergyMeasurementUnavailable as exc:
                 return cls(method, scope, None, None, str(exc))
         else:
+            provider = _EXTERNAL_ENERGY_PROVIDERS.get(backend)
+            if provider is not None:
+                meter = provider(params)
+                if not isinstance(meter, PhysicalEnergyMeter):
+                    raise TypeError(
+                        f"Energy provider for {backend!r} must return PhysicalEnergyMeter."
+                    )
+                return meter
             return cls(
                 "no_backend_energy_provider",
                 "device",
@@ -153,6 +167,18 @@ class PhysicalEnergyMeter:
             "scope": self.scope,
             "error": error,
         }
+
+
+def register_physical_energy_provider(
+    backend: str,
+    factory: Callable[[dict[str, Any]], PhysicalEnergyMeter],
+) -> None:
+    """Register an explicit meter adapter for a real external hardware backend."""
+    if backend in {"cpu", "gpu"}:
+        raise ValueError(f"A built-in energy provider already exists for {backend!r}.")
+    if not backend or backend in _EXTERNAL_ENERGY_PROVIDERS:
+        raise ValueError(f"Energy provider is empty or already registered: {backend!r}.")
+    _EXTERNAL_ENERGY_PROVIDERS[backend] = factory
 
 
 def _rapl_package_counter(

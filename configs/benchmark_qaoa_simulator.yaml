@@ -1,0 +1,32 @@
+experiment:
+  name: "benchmark_qaoa_simulator"
+  seed: 27
+  repetitions: 3
+  output:
+    root: "results"
+    save_graph_image: false
+    save_solution: true
+    save_logs: true
+
+execution:
+  time_limit_seconds: 30
+  fail_fast: false
+
+graphs:
+  - name: "er_qaoa_small"
+    type: "erdos_renyi"
+    sizes: [8]
+    density: 0.4
+    weighted: false
+
+algorithms:
+  - name: "qaoa"
+    params:
+      depth: 1
+      optimizer_iterations: 30
+      optimizer_restarts: 2
+      max_nodes: 12
+
+backends:
+  - name: "quantum_simulator"
+    params: {}
